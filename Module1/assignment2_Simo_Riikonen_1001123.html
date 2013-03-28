@@ -1,0 +1,71 @@
+<html>
+<head>
+<title>3D graphics programming Module 1 assingment 2 by Simo Riikonen 1001123</title>
+<meta charset="utf-8" />
+
+<style>
+		#container 
+		{
+			background:#FFFFFF;
+			width: 400px;
+			height: 300px;
+		}
+</style>
+</head>
+<body>
+		<div id="container"></div>
+</body>
+	
+<script type="text/javascript" src="three.js"></script>
+<script type="text/javascript" src="jquery-1.9.1.js"></script>
+
+<script type="text/javascript">
+
+//Variables use in the definition of the renderer
+var WIDTH = 400;
+var HEIGHT = 300;
+
+//Creation of the renderer
+var renderer = new THREE.WebGLRenderer(); 
+
+//Set the renderer's size
+renderer.setSize(WIDTH, HEIGHT);
+
+//Create the container which will include everything.
+var $container = $('#container');
+
+//Add the renderer into the container
+$container.append(renderer.domElement);
+
+//Variables use in the definition of the camera
+var VIEW_ANGLE = 45;
+var ASPECT = WIDTH/HEIGHT;
+var NEAR = 0.1;
+var FAR = 10000;
+
+//Camera creation
+var camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+
+//Pull the camera back from the stuff people want to see.
+camera.position.z = 300;
+
+
+//Creation of the square which will be drawn into the scene
+var cubeMaterial = new THREE.MeshBasicMaterial({color: 0xCC0000});
+var cubeHeight = 150;
+var cubeWidth = 150;
+var cubeDepth = 0;
+var cube = new THREE.Mesh(new THREE.CubeGeometry(cubeWidth, cubeHeight, cubeDepth, 1,1,1), cubeMaterial);
+
+//Creation of the actual scene.
+var scene = new THREE.Scene();
+
+//Add stuff into the scene: the cube/square and camera
+scene.add(cube);
+scene.add(camera);
+
+//Render the scene and camera.
+renderer.render(scene, camera);
+
+</script>
+</html>

@@ -1,0 +1,222 @@
+<html>
+<head>
+<title>3D graphics programming Module 1 assingment 1 by Simo Riikonen 1001123 </title>
+
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+    
+	precision mediump float;
+    void main(void) 
+	{
+		//This changes the color of the triangle
+        gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    }
+</script>
+<script id="shader-vs" type="x-shader/x-vertex">
+	
+	attribute vec3 aVertexPosition;
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+
+    void main(void) 
+	{
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+    }
+</script>
+
+<script type="text/javascript">
+
+var gl;
+function initGL(canvas)
+{
+//Little exception handling since WebGL won't work without the canvas provided from the html-body
+	try
+	{
+	//Asks the contex of the canvas. "experimental-webgl" is a standard context name.
+		gl = canvas.getContext("experimental-webgl");
+		//Sets the viewport size according to the canvas size.
+		gl.viewportWidth = canvas.width;
+		gl.viewportHeight = canvas.height;
+	}
+	catch (e)
+	{
+	
+	}
+	if (!gl)
+	{
+		alert("Could not initialize. Problems with the canvas");
+	}
+}
+//This function is used to get shaderScripts from the html-file. The right script is chosen via element id.
+function getShader(gl, id) 
+{
+      var shaderScript = document.getElementById(id);
+      if (!shaderScript) 
+	  {
+          return null;
+      }
+
+      var str = "";
+      var k = shaderScript.firstChild;
+      while (k) 
+	  {
+          if (k.nodeType == 3)
+		  {
+              str += k.textContent;
+		  }
+		k = k.nextSibling;
+      }
+
+	  //Creates a shader dependind what kind of script was found/searched for
+      var shader;
+      if (shaderScript.type == "x-shader/x-fragment")
+	  {
+          shader = gl.createShader(gl.FRAGMENT_SHADER);
+      } 
+	  else if (shaderScript.type == "x-shader/x-vertex") 
+	  {
+          shader = gl.createShader(gl.VERTEX_SHADER);
+      } 
+	  else 
+	  {
+          return null;
+      }
+
+      gl.shaderSource(shader, str);
+	  //Compiles the shader
+      gl.compileShader(shader);
+
+	  //In case compilation fails send an alert.
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) 
+	  {
+          alert(gl.getShaderInfoLog(shader));
+          return null;
+      }
+      return shader;
+}
+ 
+//This function finds and initializes the shaders for WebGL
+var shaderProgram;
+function initShaders()
+{
+	var fragmentShader = getShader(gl, "shader-fs");
+	var vertexShader = getShader(gl, "shader-vs");
+	
+	//Creates and attaches shaders to a "program" which is a system inside the WebGL
+	shaderProgram = gl.createProgram();
+	gl.attachShader(shaderProgram, vertexShader);
+	gl.attachShader(shaderProgram, fragmentShader);
+	gl.linkProgram(shaderProgram);
+	
+	//Checks for errors and alerts if needed
+	if(!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS))
+	{
+		alert("Shader initialization failed");
+	}
+	
+	//Fires up the shaderProgram
+	gl.useProgram(shaderProgram);
+	
+	//Assings a value to vertexPositionAttribute which is use in drawScene() function.
+	shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+	
+	//This tells WebGL that we want to feed it with an array
+	gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+	
+	//shaderProgram gets two more variables from the program. These are later used to send WebGL values from JS matrices.
+	shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+	shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+}
+
+//Creates two matrixes
+var mvMatrix = mat4.create();
+var pMatrix = mat4.create();
+
+//this function moves the matrixes above from JS to WebGL
+function setMatrixUniforms() 
+{
+  gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+  gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+}
+
+//Buffer initialization
+var triangleVertexPositionBuffer;
+function initBuffers()
+{
+	//Buffer creation for the triangle's vertex positions. This makes sure that graphics card knows that we will want them to get drawn when we call drawScene();
+	triangleVertexPositionBuffer = gl.createBuffer();
+	
+	//Makes sure that buffering happens on the buffer it is wanted to.
+	gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+	
+	//Vertex positions
+	var vertices = 
+	[
+		0.0, 1.0, 0.0,
+		-1.0, -1.0, 0.0,
+		1.0, -1.0, 0.0
+	];
+	
+	//Fills the current buffer with the vertices above
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+	
+	//Creates two new properties for the buffer.//// Haven't ran into this feature before. I like the idea.////
+	triangleVertexPositionBuffer.itemSize = 3;
+	triangleVertexPositionBuffer.numItems = 3;
+}
+//Scene drawing
+function drawScene()
+{
+	//This prepares the canvas so we can draw on it.
+	gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+	
+	//More preparations, now we clear it.
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	
+	//Sets up the perspective. Takes information about the field of view, the size of the canvas and how near/far objects need to be shown.
+	mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+	
+	//Moves to the center of the scene (0,0,0)
+	mat4.identity(mvMatrix);
+	
+	//Multiplies the matrix with the following parameters (x,y,z). Moves the triangle we are about to draw.
+	mat4.translate(mvMatrix, [0.0, 0.0, -5,0]);
+	
+	//Specifies the buffer 
+	gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+	
+	//This tells the WebGL that we want the values in the triangleVertexPositionBuffer to be used for vertex positions
+	gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+	
+	//Tells WebGL to take account of a model-view matrix and a projection matrix.
+	setMatrixUniforms();
+	
+	//Draws the array of vertices
+	gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems);	
+}
+//This function is called once the page is loaded.
+function webGLStart()
+{
+//Finds the element "Assingment-1-Canvas" from the this document. This element is defined in the html-body.
+	var canvas = document.getElementById("Assignment-1-Canvas");
+//Calls the functions needed to prepare for the actual drawing
+	initGL(canvas);
+	initShaders();
+	initBuffers();
+	
+	//Clears the canvas and paints it 
+	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+	//This function makes it possible to hide stuff behind some other stuff.
+	gl.enable(gl.DEPTH_TEST);
+	//Draws the scene to the canvas
+	drawScene();
+}
+</script>
+</head>
+<body onload="webGLStart();">
+<canvas id = "Assignment-1-Canvas" style = "border: none;" width= "250" height = "250"></canvas>
+</body>
+</html>
